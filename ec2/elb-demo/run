@@ -1,0 +1,91 @@
+#!/bin/bash
+##################################################################################
+# This script provisions the application load balancer stack without autoscaling.
+##################################################################################
+
+CF_STACK_NAME="acloudguru-alb-lab1"
+AWS_DEMO_KEYPAIR_NAME="AwsDemoKeyPair"
+
+create_stack() {
+    local stack_id
+
+    echo "Validating stack..."    
+
+    aws cloudformation validate-template \
+        --template-body file://src/cloudformation/stack.template	
+                
+    if [[ $? != 0 ]]; then
+        exit 1
+    fi
+
+    aws cloudformation create-stack \
+        --stack-name "${CF_STACK_NAME}" \
+        --parameters "ParameterKey=AwsDemoKeyPairName,ParameterValue=${AWS_DEMO_KEYPAIR_NAME}" \
+        --template-body file://src/cloudformation/stack.template
+
+    stack_id=$(aws_cf_get_stack_id $CF_STACK_NAME)
+    echo "StackID: ${stack_id}"
+    echo "Waiting for the stack to start up..."
+    aws cloudformation wait stack-create-complete --stack-name "${stack_id}"
+    echo "Stack was successfully created."
+}
+
+##########################################################################################
+# Parses the JSON output of a CloudFormation create-stack command and returns the id
+# of the stack created
+# $1: the filename in which the create-stack command output is stored.
+##########################################################################################
+aws_cf_get_stack_id() {
+    aws cloudformation describe-stacks --stack-name=$1 | jq -j '.Stacks[0].StackId'
+}
+
+aws_cf_stack_exists() {
+    aws cloudformation describe-stacks --stack-name=$1 >/dev/null 2>/dev/null
+}
+
+delete_stack() {   
+    local stack_id
+    stack_id=$(aws_cf_get_stack_id ${CF_STACK_NAME})
+
+    echo "Deleting stack..."
+    aws cloudformation delete-stack --stack-name "${stack_id}"
+    aws cloudformation wait stack-delete-complete --stack-name "${stack_id}"
+    echo "Delete completed."
+}
+
+create_or_resume() {
+    if aws_cf_stack_exists "${CF_STACK_NAME}"; then
+	echo "Resuming session..."
+    else
+	echo "Provisioning stack..."
+	create_stack
+    fi
+}
+
+menu() {
+    PS3='Please enter your choice: '
+    options=("Update Website" "Delete Stack" "Quit")
+    select opt in "${options[@]}"
+    do
+	case $opt in
+            "Update Website")
+		update_website
+		;;
+            "Delete Stack")
+		delete_stack
+		;;	
+            "Quit")
+		break
+		;;
+            *) echo "invalid option $REPLY";;
+	esac
+    done 
+}
+
+main() {  
+    create_or_resume
+    menu
+}
+
+main
+

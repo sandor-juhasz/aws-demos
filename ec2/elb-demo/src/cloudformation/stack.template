@@ -1,0 +1,180 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ACloudGuru Application Load Balancing Lab 1
+     
+Parameters:
+  AwsDemoKeyPairName:
+    Type: String
+    Description: The name of the key pair used to log into the EC2 instance. 
+
+Resources:
+        
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 192.168.0.0/16
+      InstanceTenancy: default
+
+      # DNS settings for RDS Endpoint name resolution
+      EnableDnsSupport: true         
+      EnableDnsHostnames: true
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway  
+  
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 192.168.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: us-east-1a
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 192.168.2.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: us-east-1b
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      
+  InternetRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref RouteTable      
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref PublicSubnet1 
+
+  PublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  # 
+  # Elastic Load Balancer settings
+  #
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "ALB Secrutiy group"
+      GroupDescription: "ALB Secrutiy group"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: 'alb'
+      Subnets: 
+        - Ref: PublicSubnet1
+        - Ref: PublicSubnet2
+      SecurityGroups:
+        - Ref: ALBSecurityGroup
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref WebTargetGroup
+
+  WebTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: "web"
+      VpcId: !Ref VPC
+      Port: 80
+      Protocol: HTTP
+      Targets:
+        - Id: !Ref EC2Node1
+          Port: 80
+        - Id: !Ref EC2Node2
+          Port: 80
+
+  #
+  # EC2 instances
+  #
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "Internet access with SSH in, incoming 80 only from ALB"
+      GroupDescription: "Web and SSH traffic in, all traffic out."
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0 
+
+  EC2Node1:
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: "ami-035be7bafff33b6b6"
+      KeyName: !Ref AwsDemoKeyPairName
+      InstanceType: "t2.micro"
+      NetworkInterfaces: 
+      - AssociatePublicIpAddress: true
+        DeviceIndex: "0"
+        GroupSet: 
+          - Ref: "EC2SecurityGroup"
+        SubnetId: 
+          Ref: "PublicSubnet1"
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -xe
+          yum install httpd -y
+          service httpd start
+          echo 'Hello Cloud Guru!' >/var/www/html/index.html
+
+  EC2Node2:
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: "ami-035be7bafff33b6b6"
+      KeyName: !Ref AwsDemoKeyPairName
+      InstanceType: "t2.micro"
+      NetworkInterfaces: 
+      - AssociatePublicIpAddress: true
+        DeviceIndex: "0"
+        GroupSet: 
+          - Ref: "EC2SecurityGroup"
+        SubnetId: 
+          Ref: "PublicSubnet2"
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -xe
+          yum install httpd -y
+          service httpd start
+          echo 'Hello Cloud Guru!' >/var/www/html/index.html
