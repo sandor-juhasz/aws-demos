@@ -1,0 +1,77 @@
+#!/bin/bash
+
+AWS_DEMO_KEYPAIR_NAME=AwsDemoKeyPair
+EC2_PRIVATE_KEY=../../../../Git/aws-demos/keys/AwsDemoKeyPair.pem
+
+mkdir -p tmp
+
+create_stack() {
+    echo "Setting up the Simple Demo project..."
+    echo "Using EC2 Key Pair: ${AWS_DEMO_KEYPAIR_NAME}"
+    
+    aws cloudformation create-stack \
+	--stack-name aws-ec2-demo \
+	--parameters "ParameterKey=AwsDemoKeyPairName,ParameterValue=${AWS_DEMO_KEYPAIR_NAME}" \
+	--template-body file://src/cloudformation/stack.yml >tmp/stack.json
+    if [[ $? != 0 ]]; then
+	echo "Error while creating the stack, exiting."
+	exit
+    fi
+    
+    stack_id=$(jq -j .StackId tmp/stack.json)
+    echo "StackID: ${stack_id}"
+    echo "Waiting for the stack to start up..."
+    aws cloudformation wait stack-create-complete --stack-name "${stack_id}"
+    if [[ $? != 0 ]]; then
+	echo "Error while creating the stack, exiting."
+	exit
+    fi
+
+    echo "Stack was successfully created."
+}
+
+delete_stack() {   
+    local stack_id=$(jq -j .StackId tmp/stack.json)
+    echo "Deleting stack..."
+    aws cloudformation delete-stack --stack-name "${stack_id}"
+    aws cloudformation wait stack-delete-complete --stack-name "${stack_id}"
+    echo "Delete completed."
+    rm -r tmp
+    echo "Temporary files deleted."
+}
+
+query_metadata() {
+    stack_id=$(jq -j .StackId tmp/stack.json)
+    aws cloudformation describe-stacks --stack-name "${stack_id}" >tmp/stack_describe.json
+    ec2_ip=$(jq -j '.Stacks[0].Outputs[] | select(.OutputKey == "EC2NodePublicIp").OutputValue' tmp/stack_describe.json)  
+    echo "EC2 instance IP address: ${ec2_ip}"
+
+    echo
+    echo "Querying user data..."
+    ssh -i "$EC2_PRIVATE_KEY" \
+	"ec2-user@${ec2_ip}" \
+	"curl -s http://169.254.169.254/latest/user-data"
+
+    echo
+    echo "Metadata contents: "
+    ssh -i "$EC2_PRIVATE_KEY" \
+	"ec2-user@${ec2_ip}" \
+	"curl -s http://169.254.169.254/latest/meta-data/"
+
+    echo
+    echo
+    echo "Public IPv4 address:"
+    ssh -i "$EC2_PRIVATE_KEY" \
+	"ec2-user@${ec2_ip}" \
+	"curl -s http://169.254.169.254/latest/meta-data/public-ipv4"
+    echo
+}
+
+
+main() {
+    create_stack
+    query_metadata
+    delete_stack
+}
+
+main

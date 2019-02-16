@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Demo project to query EC2 metadata.
+
+Parameters:
+  AwsDemoKeyPairName:
+    Type: String
+    Description: The name of the key pair used to log into the EC2 instance.
+      
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 192.168.1.0/24
+      InstanceTenancy: default
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway  
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 192.168.1.0/24
+      MapPublicIpOnLaunch: true
+     
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      
+  InternetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGateway
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref RouteTable      
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref PublicSubnet
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "Internet access with SSH in"
+      GroupDescription: "SSH traffic in, all traffic out."
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0      
+
+  EC2Node:
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: "ami-0df51bbdb09841968"
+      KeyName: !Ref AwsDemoKeyPairName
+      InstanceType: "t2.micro"
+      NetworkInterfaces: 
+      - AssociatePublicIpAddress: "true"
+        DeviceIndex: "0"
+        GroupSet: 
+          - Ref: "EC2SecurityGroup"
+        SubnetId: 
+          Ref: "PublicSubnet"
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -xe
+          yum install httpd -y
+          mkdir -p /var/www/html/demo1
+          echo 'Hello Cloud Guru! Demo 1' >/var/www/html/demo1/index.html 
+          
+Outputs:
+  EC2NodePublicIp:
+    Description: The external IP address of the started EC2 instance.
+    Value: !GetAtt EC2Node.PublicIp
+    
