@@ -1,0 +1,7 @@
+Launches an EC2 instance with SSM agent enabled in a public subnet
+with SSH access.  This demo is a good start if you want to experiment
+with Systems Manager and still need direct SSH access to your machine.
+
+After provisioning the stack, open AWS Systems Manager / Managed
+Instances and your new instance should appear. Clicking Actions /
+Start Session will open a shell.
