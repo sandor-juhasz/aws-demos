@@ -1,0 +1,4 @@
+This demo creates a S3 bucket called sjuhasz-lambda-demo. Any text
+file with *.txt extension uploaded into the /upload/ prefix will
+trigger a Lambda function which converts the file to uppercase and
+store it under the /converted/ prefix.

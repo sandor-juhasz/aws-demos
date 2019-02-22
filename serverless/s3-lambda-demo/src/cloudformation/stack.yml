@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Lambda demo which converts text files uploaded to S3 to uppercase.
+     
+Resources:
+  
+  DemoBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "sjuhasz-lambda-demo"
+      NotificationConfiguration:
+        LambdaConfigurations:
+        - Event: 's3:ObjectCreated:*'
+          Filter:
+            S3Key:
+              Rules:
+                - Name: prefix
+                  Value: "upload/"             # Note: leading slash is not needed for prefixes!
+                - Name: suffix
+                  Value: "txt"
+          Function: !GetAtt TextConverter.Arn  # Note: !Ref TextConverter returns the name of the lambda function, not ARN
+                                               # Returned value is object-specific, see
+                                               # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
+
+  DemoBucketPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref TextConverter
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref "AWS::AccountId"
+      SourceArn: "arn:aws:s3:::sjuhasz-lambda-demo"
+      
+  TextConverter:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Converts objects /upload/*.txt to uppercase.
+      Handler: textconverter.lambda_handler
+      Role: !GetAtt TextConverterExecutionRole.Arn # TODO: !GetAtt is unnecessary.
+      Code:
+        S3Bucket: "sjuhasz-code"
+        S3Key: "aws-demos/serverless/s3-lambda-demo/textconverter.zip"
+      Timeout: 30
+      Runtime: python3.7
+
+  TextConverterExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: {Service: [lambda.amazonaws.com]}
+          Action: ['sts:AssumeRole']
+      Path: /
+      ManagedPolicyArns:
+        - !Ref TextConverterExecutionPolicy
+
+  TextConverterExecutionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: "arn:aws:logs:*:*:*"
+          - Effect: "Allow"
+            Action:
+              - "s3:GetObject"              # TODO: separaete the GetObject permission from /upload/ and the writeObject.
+              - "s3:PutObject"
+              - "s3:DeleteObject"
+            Resource: "arn:aws:s3:::sjuhasz-lambda-demo/*" # TODO: use substitution.
+
