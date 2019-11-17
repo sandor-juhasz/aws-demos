@@ -1,40 +1,30 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: 'protected-api
-
-  Sample SAM Template for protected-api
+Description: 'SAM Template for the protected-api demo.
 
   '
 Globals:
   Function:
+    Runtime: python3.7
     Timeout: 3
 Resources:
-  HelloWorldFunction:
+  ProtectedApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        DefaultAuthorizer: AWS_IAM
+  AssetsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://sjuhasz-code/dae83a1b8803c65cbf3bfe93b38eadd4
-      Handler: app.lambda_handler
+      CodeUri: s3://sjuhasz-code/ac153cc9535ab7bf8c3404a849180f01
+      Handler: app.assets_handler
       Runtime: python3.7
       Events:
-        HelloWorld:
+        GetAssets:
           Type: Api
           Properties:
-            Path: /hello
+            RestApiId:
+              Ref: ProtectedApi
+            Path: /assets
             Method: get
-Outputs:
-  HelloWorldApi:
-    Description: API Gateway endpoint URL for Prod stage for Hello World function
-    Value:
-      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/
-  HelloWorldFunction:
-    Description: Hello World Lambda Function ARN
-    Value:
-      Fn::GetAtt:
-      - HelloWorldFunction
-      - Arn
-  HelloWorldFunctionIamRole:
-    Description: Implicit IAM Role created for Hello World function
-    Value:
-      Fn::GetAtt:
-      - HelloWorldFunctionRole
-      - Arn
