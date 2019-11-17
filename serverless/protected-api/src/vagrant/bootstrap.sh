@@ -16,18 +16,24 @@ apt-get update
 #       the system with additional redundant downloads like a whole Python3
 #       environment.
 #
+# NOTE: The SAM CLI does not support installations on Python 2.7. When installed
+#       on a Python 2.7 runtime, a red error message is displayed guiding the user
+#       to follow the official Homebrew-based installation procedure.
+#
 # References:
 #   - https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install-linux.html
 #   - https://github.com/awslabs/aws-sam-cli/issues/1424
 #
 ################################################################################
-apt-get install -y jq python-pip zip
-pip install awscli
+#apt-get install -y jq python-pip zip
+
+apt-get install -y python3 python3-pip
 apt-get install -y docker.io
 usermod -aG docker vagrant
-pip install aws-sam-cli
+pip3 install awscli
+pip3 install aws-sam-cli
 
 ################################################################################
 # Installing Python3 for project dependent development.
 ################################################################################
-apt-get install -y python3 python3-pip
+
