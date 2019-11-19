@@ -1,0 +1,14 @@
+#!/bin/bash -e
+#
+# Builds the web UI for the asset catalog and places it in the dist directory.
+# The script is called from the higher level build script.
+#
+
+echo "#############################################################"
+echo "# Building the Python wheel for the Asset Catalog Cron Job. #"
+echo "#############################################################"
+echo
+
+python3 setup.py sdist bdist_wheel
+
+echo "Done."

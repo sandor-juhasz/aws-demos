@@ -17,7 +17,7 @@ Resources:
   AssetsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://sjuhasz-code/ac153cc9535ab7bf8c3404a849180f01
+      CodeUri: s3://sjuhasz-code/54a9f28c89ff1cb2a071f19ce173eeff
       Handler: app.assets_handler
       Runtime: python3.7
       Events:
@@ -28,3 +28,14 @@ Resources:
               Ref: ProtectedApi
             Path: /assets
             Method: get
+  ProtectedApiUserPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - execute-api:Invoke
+          Resource:
+            Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProtectedApi}/*/GET/assets
