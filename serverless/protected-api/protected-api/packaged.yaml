@@ -14,10 +14,11 @@ Resources:
       StageName: Prod
       Auth:
         DefaultAuthorizer: AWS_IAM
+      AccessLogSetting: null
   AssetsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://sjuhasz-code/54a9f28c89ff1cb2a071f19ce173eeff
+      CodeUri: s3://sjuhasz-code/1cb5bbfdbfc809d9217c6fb367325b23
       Handler: app.assets_handler
       Runtime: python3.7
       Events:
@@ -38,4 +39,4 @@ Resources:
           Action:
           - execute-api:Invoke
           Resource:
-            Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProtectedApi}/*/GET/assets
+            Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProtectedApi}/*

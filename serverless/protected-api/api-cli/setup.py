@@ -20,5 +20,9 @@ setuptools.setup(
     python_requires='>=3.6',
     entry_points = {
         'console_scripts': ['get-assets=api_cli.app:get_assets' ]
-    }
+    },
+    install_requires=[
+        "boto3",
+        "requests-aws-sign"
+        ],
 )
