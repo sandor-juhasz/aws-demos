@@ -26,20 +26,29 @@ apt-get update
 #       implementation on Ubuntu Bionic is Pyhton 3.6.8 and it is mandatory to
 #       support APT and other Linux tools.
 #
+# NOTE: The final blueprint recommendation does not use the SAM CLI as it does
+#       not support calling AWS_IAM-protected API Gateway resources with not
+#       passing the caller identity (at the moment).
+#
 # References:
 #   - https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install-linux.html
 #   - https://github.com/awslabs/aws-sam-cli/issues/1424
 #
 ################################################################################
-#apt-get install -y jq python-pip zip
-
-apt-get install -y python3 python3-pip python3.7
-apt-get install -y docker.io
+apt-get install -y jq zip python3 python3-pip python3.7 docker.io
 usermod -aG docker vagrant
-pip3 install awscli
-pip3 install aws-sam-cli
+pip3 install awscli aws-sam-cli
+
 
 ################################################################################
-# Installing Python3 for project dependent development.
+# Installing Node.js and the Serverless Framework.
+#
+# NOTE: The reason for chosing the Serverless Framework for the project was
+#       that both SAM and the Serverless Framework is significantly simpler
+#       to use than pure CloudFormation and only the Serverless Framework
+#       supports the AWS_IAM authorization properly at the time when the project
+#       was created.
 ################################################################################
-
+curl -sL https://deb.nodesource.com/setup_12.x | bash -
+apt-get install -y nodejs
+npm install serverless -g
