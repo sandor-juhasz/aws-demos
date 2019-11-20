@@ -3,4 +3,30 @@ with IAM authorization. Only an AWS user with the proper access policy
 can access the API.
 
 
-sam init --runtime python3.7 -n protected-api
+edl-setenv owner-sand
+aws-login
+vagrant up
+vagrant ssh
+
+# inside the SSH session
+
+export AWS_PROFILE=owner-sand
+cd /vagrant/protected-api-serverless
+serverless deploy
+
+cd ../api-cli
+pip3 install -e .
+export PATH=$PATH:/.local/bin
+
+# Log into the AWS Console create keys for both test users.
+# set them up with
+aws configure --profile api-client-test
+aws configure --profile api-client-test2
+
+# Test the API
+
+export AWS_PROFILE=api-client-test
+call-protected-api
+export AWS_PROFILE=api-client-test2
+call-protected-api
+
