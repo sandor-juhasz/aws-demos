@@ -19,7 +19,7 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     entry_points = {
-        'console_scripts': ['get-assets=api_cli.app:get_assets' ]
+        'console_scripts': ['call-protected-api=api_cli.app:call_protected_api' ]
     },
     install_requires=[
         "boto3",

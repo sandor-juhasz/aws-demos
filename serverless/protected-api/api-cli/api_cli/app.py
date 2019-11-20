@@ -1,8 +1,9 @@
 import requests
 from requests_aws_sign import AWSV4Sign
 from boto3 import session
+import sys
 
-def get_assets():
+def call_protected_api():
     """https://github.com/jmenga/requests-aws-sign"""
     
     print("Getting assets")
@@ -11,7 +12,7 @@ def get_assets():
     credentials = s.get_credentials()
     region = s.region_name or 'us-east-1'
            
-    uri = "https://wl99lxt81i.execute-api.us-east-1.amazonaws.com/Prod/assets"
+    uri = sys.argv[1]
     service = 'execute-api'
     auth=AWSV4Sign(credentials, region, service)
     response = requests.get(uri, auth=auth)

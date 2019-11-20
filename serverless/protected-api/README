@@ -14,6 +14,7 @@ export AWS_PROFILE=owner-sand
 cd /vagrant/protected-api-serverless
 serverless deploy
 
+
 cd ../api-cli
 pip3 install -e .
 export PATH=$PATH:/.local/bin
@@ -24,9 +25,11 @@ aws configure --profile api-client-test
 aws configure --profile api-client-test2
 
 # Test the API
+# Service endpoint URL can be queried from the cloudformation or from the output
+# of the serverless deploy command
 
 export AWS_PROFILE=api-client-test
-call-protected-api
+call-protected-api "https://muj81b11ub.execute-api.us-east-1.amazonaws.com/dev/hello"
 export AWS_PROFILE=api-client-test2
-call-protected-api
+call-protected-api "https://muj81b11ub.execute-api.us-east-1.amazonaws.com/dev/hello"
 
