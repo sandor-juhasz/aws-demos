@@ -1,0 +1,112 @@
+#!/bin/bash
+##################################################################################
+#
+##################################################################################
+
+CF_STACK_NAME="lambda-ssm-config-demo"
+CODE_BUCKET="sjuhasz-code"
+LAMBDA_CODE="aws-demos/serverless/scheduled-lambda-demo/hello.zip"
+
+install_code() {
+    echo "Installing lambda code to the code bucket..."
+    mkdir -p tmp
+    cp src/lambda/hello/hello.py tmp
+    cd tmp
+    zip hello.zip hello.py
+    aws s3 cp hello.zip "s3://${CODE_BUCKET}/${LAMBDA_CODE}"
+    cd ..
+    echo "Done."
+}
+
+create_stack() {
+    local stack_id
+
+    echo "Validating stack..."    
+
+    aws cloudformation validate-template \
+        --template-body file://src/cloudformation/stack.yml	
+                
+    if [[ $? != 0 ]]; then
+        exit 1
+    fi
+
+    install_code
+    
+    aws cloudformation create-stack \
+        --stack-name "${CF_STACK_NAME}" \
+        --template-body file://src/cloudformation/stack.yml \
+        --capabilities CAPABILITY_IAM
+    
+    stack_id=$(aws_cf_get_stack_id $CF_STACK_NAME)
+    echo "StackID: ${stack_id}"
+    echo "Waiting for the stack to start up..."
+    aws cloudformation wait stack-create-complete --stack-name "${stack_id}"
+    echo "Stack was successfully created."
+}
+
+##########################################################################################
+# Parses the JSON output of a CloudFormation create-stack command and returns the id
+# of the stack created
+# $1: the filename in which the create-stack command output is stored.
+##########################################################################################
+aws_cf_get_stack_id() {
+    aws cloudformation describe-stacks --stack-name=$1 | jq -j '.Stacks[0].StackId'
+}
+
+aws_cf_stack_exists() {
+    aws cloudformation describe-stacks --stack-name=$1 >/dev/null 2>/dev/null
+}
+
+delete_stack() {   
+    local stack_id
+    stack_id=$(aws_cf_get_stack_id ${CF_STACK_NAME})
+
+    echo "Removing code from the code bucket..."
+    aws s3 rm "s3://${CODE_BUCKET}/${LAMBDA_CODE}"
+    
+    echo "Deleting stack..."
+    aws cloudformation delete-stack --stack-name "${stack_id}"
+    aws cloudformation wait stack-delete-complete --stack-name "${stack_id}"
+    echo "Delete completed."
+}
+
+create_or_resume() {
+    if aws_cf_stack_exists "${CF_STACK_NAME}"; then
+	echo "Resuming session..."
+    else
+	echo "Provisioning stack..."
+	create_stack
+    fi
+}
+
+test_stack() {
+    echo "Not implemented."
+}
+
+menu() {
+    PS3='Please enter your choice: '
+    options=("Test" "Delete Stack" "Quit")
+    select opt in "${options[@]}"
+    do
+	case $opt in
+	    "Test")
+		test_stack
+		;;
+            "Delete Stack")
+		delete_stack
+		;;	
+            "Quit")
+		break
+		;;
+            *) echo "invalid option $REPLY";;
+	esac
+    done 
+}
+
+main() {  
+    create_or_resume
+    menu
+}
+
+main
+
