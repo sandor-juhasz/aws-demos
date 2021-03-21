@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Lambda demo which converts text files uploaded to S3 to uppercase.
+     
+Resources:
+
+  ScheduledRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "ScheduledRule"
+      ScheduleExpression: "rate(1 minute)"
+      State: "ENABLED"
+      Targets: 
+        - Arn: 
+            Fn::GetAtt: 
+              - "HelloLambda"
+              - "Arn"
+          Id: "TargetFunctionV1"
+          
+  PermissionForEventsToInvokeLambda:          
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: !Ref "HelloLambda"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "ScheduledRule"
+          - "Arn"        
+  
+  HelloLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: hello.lambda_handler
+      Role: !GetAtt HelloLambdaExecutionRole.Arn # TODO: !GetAtt is unnecessary.
+      Code:
+        S3Bucket: "sjuhasz-code"
+        S3Key: "aws-demos/serverless/scheduled-lambda-demo/hello.zip"
+      Timeout: 30
+      Runtime: python3.7
+
+  HelloLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: {Service: [lambda.amazonaws.com]}
+          Action: ['sts:AssumeRole']
+      Path: /
+      ManagedPolicyArns:
+        - !Ref HelloLambdaExecutionPolicy
+
+  HelloLambdaExecutionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: "arn:aws:logs:*:*:*"
